@@ -23,7 +23,12 @@ steps:
     feedsToUse: 'select'
     noCache: true
 
-
+- task: DotNetCoreCLI@2
+  displayName: 'Pack projects'
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/*.csproj'
+    versioningScheme: 'off'
 
 - task: DotNetCoreCLI@2
   displayName: 'Push projects'
