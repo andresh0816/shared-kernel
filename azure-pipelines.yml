@@ -28,12 +28,7 @@ steps:
   inputs:
     command: 'pack'
     packagesToPack: '**/*.csproj'
-    configuration: 
-    packDirectory: 
-    versioningScheme: 'byPrereleaseNumber'
-    majorVersion: '1'
-    minorVersion: '0'
-    patchVersion: '0'
+    versioningScheme: 'off'
 
 - task: DotNetCoreCLI@2
   displayName: 'Push projects'
