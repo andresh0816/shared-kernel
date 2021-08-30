@@ -31,6 +31,6 @@ steps:
 - task: NuGetCommand@2
   inputs:
     command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
+    packagesToPush: '$(Pipeline.Workspace)/**/drop/*.nupkg'
     nuGetFeedType: 'internal'
     publishVstsFeed: '09666f3f-d343-49f2-a8cf-2cd8e4e64b95/83a37b81-26d9-4527-81fa-8a98c8788c48'
