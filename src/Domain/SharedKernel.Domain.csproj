@@ -3,32 +3,34 @@
   <PropertyGroup>
     <TargetFrameworks>net5</TargetFrameworks>
     <NeutralLanguage>en</NeutralLanguage>
-    <PackageId>Pipoburgos.SharedKernel.Domain</PackageId>
+    <PackageId>SharedKernel.Domain</PackageId>
     <Version>5.0.20</Version>
-    <RepositoryUrl>https://github.com/pipoburgos/SharedKernel</RepositoryUrl>
+    <RepositoryUrl></RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageIcon>icon.png</PackageIcon>
-    <Authors>Roberto Fernández Salinas</Authors>
-    <Company>Roberto Fernández Salinas</Company>
+    <PackageIcon></PackageIcon>
+    <Authors>Andres Hernandez</Authors>
+    <Company>Andres Hernandez</Company>
     <Description></Description>
     <DocumentationFile>SharedKernel.Domain.xml</DocumentationFile>
-    <PackageTags>C# DDD AggregateRoot Entity ValueObject Event EventBus Specification Repository</PackageTags>
+    <PackageTags></PackageTags>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net40|AnyCPU'">
     <DocumentationFile>SharedKernel.Domain.xml</DocumentationFile>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Include="icon.png">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
-  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net5|AnyCPU'">
+    <WarningLevel>2</WarningLevel>
+  </PropertyGroup>
 
   <ItemGroup>
     <EmbeddedResource Remove="Exceptions\ExceptionCodes.resx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="icon.png" />
+    <None Remove="icon.png" />
   </ItemGroup>
 
   <ItemGroup>
