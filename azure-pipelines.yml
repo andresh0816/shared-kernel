@@ -40,7 +40,7 @@ steps:
   displayName: 'Pack projects'
   inputs:
     command: 'pack'
-    configuration: 'Release'
+    configuration: 'Debug'
     packagesToPack: '**/*.csproj'
     nobuild: true
     versioningScheme: 'byPrereleaseNumber'
