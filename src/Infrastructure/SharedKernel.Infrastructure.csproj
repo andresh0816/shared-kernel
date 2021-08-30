@@ -13,7 +13,7 @@
     <Authors>Andres Hernandez</Authors>
     <Company>Andres Hernandez</Company>
     <Description></Description>
-    <DocumentationFile>SharedKernel.Infrastructure.xml</DocumentationFile>
+    <DocumentationFile></DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net40|AnyCPU'">
