@@ -7,7 +7,7 @@ trigger:
 - master
 
 pool:
-  vmImage: 'windows-latest'
+  vmImage: 'ubuntu-latest'
 
 variables:
   solution: '**/*.sln'
@@ -15,10 +15,23 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
+- task: UseDotNet@2
+  displayName: 'Select .NET Version'
+  inputs:
+    version: '5.x'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build projects'
+  inputs:
+    command: 'build'
+    configuration: 'Release'
+    projects: '**/*.csproj'
+
 - task: DotNetCoreCLI@2
   displayName: "Restore projects"
   inputs:
     command: 'restore'
+    configuration: 'Release'
     projects: '**/*.csproj'
     feedsToUse: 'select'
     noCache: true
@@ -27,13 +40,19 @@ steps:
   displayName: 'Pack projects'
   inputs:
     command: 'pack'
+    configuration: 'Release'
     packagesToPack: '**/*.csproj'
-    versioningScheme: 'off'
+    nobuild: true
+    versioningScheme: 'byPrereleaseNumber'
+    majorVersion: '1'
+    minorVersion: '0'
+    patchVersion: '0'
 
 - task: DotNetCoreCLI@2
   displayName: 'Push projects'
   inputs:
     command: 'push'
+    configuration: 'Release'
     packagesToPush: '**/*.nupkg'
     nuGetFeedType: 'internal'
     publishVstsFeed: '09666f3f-d343-49f2-a8cf-2cd8e4e64b95/ea97ba70-15b0-43e8-a5e5-5d08b3a67490'
