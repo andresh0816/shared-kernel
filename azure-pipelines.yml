@@ -15,11 +15,6 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
-- task: NuGetToolInstaller@1
-
-- task: NuGetCommand@2
-  inputs:
-    restoreSolution: '$(solution)'
 
 - task: VSBuild@1
   inputs:
@@ -28,9 +23,17 @@ steps:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
 
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
 - task: NuGetCommand@2
   inputs:
     command: 'push'
     packagesToPush: '$(Pipeline.Workspace)/**/drop/*.nupkg'
     nuGetFeedType: 'internal'
-    publishVstsFeed: '09666f3f-d343-49f2-a8cf-2cd8e4e64b95/83a37b81-26d9-4527-81fa-8a98c8788c48'
+    publishVstsFeed: 'bae51bf3-37bc-4167-9fca-2b0961701efa'
+    verbosityPush: 'Normal'
+
