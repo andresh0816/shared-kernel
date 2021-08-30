@@ -11,8 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharedKernel.Infrastructure
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9FF73358-40B0-4081-A499-4351F71833C3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharedKernel.Api", "src\Api\SharedKernel.Api.csproj", "{2AFA1B22-DA17-4956-89AF-8DECF8FC7DE4}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,10 +29,6 @@ Global
 		{235B187E-0E54-4A3C-A52D-F503FBC02856}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{235B187E-0E54-4A3C-A52D-F503FBC02856}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{235B187E-0E54-4A3C-A52D-F503FBC02856}.Release|Any CPU.Build.0 = Release|Any CPU
-		{2AFA1B22-DA17-4956-89AF-8DECF8FC7DE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2AFA1B22-DA17-4956-89AF-8DECF8FC7DE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2AFA1B22-DA17-4956-89AF-8DECF8FC7DE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2AFA1B22-DA17-4956-89AF-8DECF8FC7DE4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -43,7 +37,6 @@ Global
 		{A52EFD8D-C79D-4416-B9D1-A6408B3B1207} = {9FF73358-40B0-4081-A499-4351F71833C3}
 		{942DDCB2-2F2E-46A8-827C-4B0F585032F2} = {9FF73358-40B0-4081-A499-4351F71833C3}
 		{235B187E-0E54-4A3C-A52D-F503FBC02856} = {9FF73358-40B0-4081-A499-4351F71833C3}
-		{2AFA1B22-DA17-4956-89AF-8DECF8FC7DE4} = {9FF73358-40B0-4081-A499-4351F71833C3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {183949C1-7C05-4737-ABC0-7511F5A7447A}
