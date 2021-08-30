@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net5</TargetFrameworks>
     <NeutralLanguage>en</NeutralLanguage>
-    <PackageId>Pipoburgos.SharedKernel.Application</PackageId>
+    <PackageId>SharedKernel.Application</PackageId>
     <Version>5.0.20</Version>
     <RepositoryUrl>https://github.com/pipoburgos/SharedKernel</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
