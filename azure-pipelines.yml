@@ -23,6 +23,10 @@ steps:
     version: 5.x
     installationPath: $(Agent.ToolsDirectory)/dotnet
 
+- task: NuGetToolInstaller@1
+  inputs:
+    versionSpec: '5.x'
+
 - task: DotNetCoreCLI@2
   inputs:
     command: 'restore'
