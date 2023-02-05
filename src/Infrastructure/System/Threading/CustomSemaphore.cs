@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using AsyncKeyedLock;
 using SharedKernel.Application.System.Threading;
 
 namespace SharedKernel.Infrastructure.System.Threading
@@ -10,15 +11,15 @@ namespace SharedKernel.Infrastructure.System.Threading
     /// </summary>
     public class CustomSemaphore : ISemaphore
     {
-        private readonly ISemaphoreStore _semaphoreStore;
+        private readonly AsyncKeyedLocker<string> _asyncKeyedLocker;
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="semaphoreStore"></param>
-        public CustomSemaphore(ISemaphoreStore semaphoreStore)
+        /// <param name="asyncKeyedLocker"></param>
+        public CustomSemaphore(AsyncKeyedLocker<string> asyncKeyedLocker)
         {
-            _semaphoreStore = semaphoreStore;
+            _asyncKeyedLocker = asyncKeyedLocker;
         }
 
         /// <summary>
@@ -30,15 +31,9 @@ namespace SharedKernel.Infrastructure.System.Threading
         /// <returns></returns>
         public async Task<T> RunOneAtATimeFromGivenKey<T>(string key, Func<T> funcion)
         {
-            var semaforo = _semaphoreStore.GetOrCreate(key);
-            try
+            using (await _asyncKeyedLocker.LockAsync(key).ConfigureAwait(false))
             {
-                await semaforo.WaitAsync();
                 return funcion();
-            }
-            finally
-            {
-                semaforo.Release();
             }
         }
 
@@ -52,15 +47,9 @@ namespace SharedKernel.Infrastructure.System.Threading
         /// <returns></returns>
         public async Task<T> RunOneAtATimeFromGivenKey<T>(string key, Func<Task<T>> funcion, CancellationToken cancellationToken)
         {
-            var semaforo = _semaphoreStore.GetOrCreate(key);
-            try
+            using (await _asyncKeyedLocker.LockAsync(key, cancellationToken).ConfigureAwait(false))
             {
-                await semaforo.WaitAsync(cancellationToken);
                 return await funcion();
-            }
-            finally
-            {
-                semaforo.Release();
             }
         }
     }
