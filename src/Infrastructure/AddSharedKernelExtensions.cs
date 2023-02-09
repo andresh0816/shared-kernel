@@ -1,3 +1,4 @@
+using AsyncKeyedLock;
 using Microsoft.Extensions.DependencyInjection;
 using SharedKernel.Application.Logging;
 using SharedKernel.Application.Reporting;
@@ -44,7 +45,11 @@ namespace SharedKernel.Infrastructure
                 .AddTransient<IIdentityService, HttpContextAccessorIdentityService>()
                 .AddTransient<IRandomNumberGenerator, RandomNumberGenerator>()
                 .AddTransient<IReportRenderer, ReportRenderer>()
-                .AddSingleton<ISemaphoreStore, InMemorySemaphoreStore>()
+                .AddSingleton(new AsyncKeyedLocker<string>(o =>
+                {
+                    o.PoolSize = 20;
+                    o.PoolInitialFill = 1;
+                }))
                 .AddTransient<ISemaphore, CustomSemaphore>()
                 .AddTransient<ISha256, Sha256>()
                 .AddTransient<IStreamHelper, StreamHelper>()
