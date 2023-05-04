@@ -1,9 +1,10 @@
-﻿using System;
+﻿using SharedKernel.Application.Exceptions;
+using System;
+using System.Collections;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
-using SharedKernel.Application.Exceptions;
 
 namespace SharedKernel.Application.Reflection
 {
@@ -177,7 +178,7 @@ namespace SharedKernel.Application.Reflection
                 if (t == typeof(Guid) || t == typeof(Guid?))
                 {
                     var valueString = value.ToString();
-#if NETCOREAPP3_1 || NET5_0
+#if NETCOREAPP || NET5_0 || NET6_0
                     if (valueString == null)
                         fieldInfo.SetValue(obj, null);
                     else
@@ -215,6 +216,92 @@ namespace SharedKernel.Application.Reflection
                 ? default
                 : (TResult)Convert.ChangeType(propertyInfo.GetValue(obj, new object[0]), typeof(TResult));
 #endif
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <typeparam name="TResult"></typeparam>
+        /// <param name="type"></param>
+        /// <param name="obj"></param>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public static TResult GetProperty<TResult>(Type type, object obj, string name)
+        {
+            var propertyInfo = type.GetProperty(name);
+
+#if !NET40
+            return propertyInfo == null || !propertyInfo.CanRead ? default :
+                propertyInfo.GetValue(obj) == default ? default :
+                (TResult)Convert.ChangeType(propertyInfo.GetValue(obj), typeof(TResult));
+#else
+            return propertyInfo == null || !propertyInfo.CanRead
+                ? default
+                : (TResult)Convert.ChangeType(propertyInfo.GetValue(obj, new object[0]), typeof(TResult));
+#endif
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="propertyInfo"></param>
+        /// <param name="type"></param>
+        /// <param name="object"></param>
+        /// <returns></returns>
+        public static string GetStringValue(this PropertyInfo propertyInfo, Type type, object @object)
+        {
+            if (propertyInfo.PropertyType.GetTypeNotNullable().IsEnum)
+            {
+#if NETSTANDARD2_0
+
+                var tempPriority =
+                    Enum.Parse(propertyInfo.PropertyType.GetTypeNotNullable(),
+                        propertyInfo.GetValue(@object, null)?.ToString()!);
+                return ((int)tempPriority).ToString();
+#else
+                Enum.TryParse(propertyInfo.PropertyType.GetTypeNotNullable(),
+                    propertyInfo.GetValue(@object, null)?.ToString(), out var tempPriority);
+                return tempPriority == default ? default : Convert.ToInt32(tempPriority).ToString();
+#endif
+            }
+
+            if (propertyInfo.PropertyType == typeof(DateTime))
+                return GetProperty<DateTime>(type, @object, propertyInfo.Name).ToString("O");
+
+
+            if (propertyInfo.PropertyType == typeof(DateTime?))
+            {
+                var date = GetProperty<DateTime>(type, @object, propertyInfo.Name);
+
+                return date == default ? default : date.ToString("O");
+            }
+
+            if (propertyInfo.PropertyType != typeof(string) &&
+                typeof(IEnumerable).IsAssignableFrom(propertyInfo.PropertyType))
+            {
+                var enumerable = (IEnumerable)propertyInfo.GetValue(@object, null);
+
+                if (enumerable == default)
+                    return string.Empty;
+
+                var a = string.Join(",", enumerable.Cast<object>().Select(e => e?.ToString()));
+
+                return a;
+            }
+
+            return propertyInfo.GetValue(@object, null)?.ToString();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static Type GetTypeNotNullable(this Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)
+                ? Nullable.GetUnderlyingType(type)
+                : type;
         }
     }
 }

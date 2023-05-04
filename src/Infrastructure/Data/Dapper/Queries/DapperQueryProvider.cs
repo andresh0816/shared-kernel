@@ -1,32 +1,30 @@
 ﻿using Dapper;
 using SharedKernel.Application.Cqrs.Queries.Contracts;
 using SharedKernel.Application.Cqrs.Queries.Entities;
-using SharedKernel.Infrastructure.Data.EntityFrameworkCore.DbContexts;
+using SharedKernel.Infrastructure.Data.Dapper.ConnectionFactory;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
-#if !NET461
-using Microsoft.EntityFrameworkCore;
-#endif
 
 namespace SharedKernel.Infrastructure.Data.Dapper.Queries
 {
     /// <summary>
     /// 
     /// </summary>
-    /// <typeparam name="TDbContextBase"></typeparam>
-    public sealed class DapperQueryProvider<TDbContextBase> where TDbContextBase : DbContextBase
+    public sealed class DapperQueryProvider : IDisposable
     {
-        private readonly IDbContextFactory<TDbContextBase> _factory;
+        private readonly IDbConnectionFactory _dbConnectionFactory;
+        private readonly List<DbConnection> _connections;
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="factory"></param>
-        public DapperQueryProvider(IDbContextFactory<TDbContextBase> factory)
+        public DapperQueryProvider(IDbConnectionFactory dbConnectionFactory)
         {
-            _factory = factory;
+            _dbConnectionFactory = dbConnectionFactory;
+            _connections = new List<DbConnection>();
         }
 
         /// <summary>
@@ -38,8 +36,10 @@ namespace SharedKernel.Infrastructure.Data.Dapper.Queries
         /// <returns></returns>
         public async Task<T> ExecuteQueryFirstOrDefaultAsync<T>(string sql, object parameters = null)
         {
-            using var context = _factory.CreateDbContext();
-            return await context.GetConnection.QueryFirstOrDefaultAsync<T>(sql, parameters);
+            var connection = _dbConnectionFactory.GetConnection();
+            _connections.Add(connection);
+            await connection.OpenAsync();
+            return await connection.QueryFirstOrDefaultAsync<T>(sql, parameters);
         }
 
         /// <summary>
@@ -51,8 +51,10 @@ namespace SharedKernel.Infrastructure.Data.Dapper.Queries
         /// <returns></returns>
         public async Task<List<T>> ExecuteQueryAsync<T>(string sql, object parameters = null)
         {
-            using var context = _factory.CreateDbContext();
-            return (await context.GetConnection.QueryAsync<T>(sql, parameters)).ToList();
+            var connection = _dbConnectionFactory.GetConnection();
+            _connections.Add(connection);
+            await connection.OpenAsync();
+            return (await connection.QueryAsync<T>(sql, parameters)).ToList();
         }
 
         /// <summary>
@@ -65,8 +67,11 @@ namespace SharedKernel.Infrastructure.Data.Dapper.Queries
         /// <returns></returns>
         public async Task<IPagedList<T>> ToPagedListAsync<T>(string sql, object parameters, PageOptions pageOptions)
         {
-            using var context = _factory.CreateDbContext();
-            var count = await context.GetConnection.QueryFirstOrDefaultAsync<int>($"SELECT COUNT(1) FROM ({sql}) ALIAS", parameters);
+            var connection = _dbConnectionFactory.GetConnection();
+            _connections.Add(connection);
+            await connection.OpenAsync();
+
+            var counting = connection.QueryFirstOrDefaultAsync<int>($"SELECT COUNT(1) FROM ({sql}) ALIAS", parameters);
 
             var queryString = sql;
             if (pageOptions.Orders != null && pageOptions.Orders.Any())
@@ -74,9 +79,40 @@ namespace SharedKernel.Infrastructure.Data.Dapper.Queries
 
             queryString += $"{Environment.NewLine} OFFSET {pageOptions.Skip} ROWS FETCH NEXT {pageOptions.Take} ROWS ONLY";
 
-            var items = await context.GetConnection.QueryAsync<T>(queryString, parameters);
+            var gettingItems = connection.QueryAsync<T>(queryString, parameters);
 
-            return new PagedList<T>(count, count, items);
+            await Task.WhenAll(counting, gettingItems);
+
+            return new PagedList<T>(counting.Result, counting.Result, gettingItems.Result);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if (!disposing)
+                return;
+
+            foreach (var dbConnection in _connections)
+            {
+                dbConnection.Close();
+                dbConnection.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        ~DapperQueryProvider()
+        {
+            Dispose(false);
         }
     }
 }

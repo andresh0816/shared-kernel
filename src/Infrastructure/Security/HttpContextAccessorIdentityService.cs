@@ -1,8 +1,8 @@
-﻿using System;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using SharedKernel.Application.Logging;
 using SharedKernel.Domain.Security;
+using System;
+using System.Security.Claims;
 
 namespace SharedKernel.Infrastructure.Security
 {
@@ -17,12 +17,12 @@ namespace SharedKernel.Infrastructure.Security
         /// <param name="httpContextAccessor"></param>
         /// <param name="logger"></param>
         public HttpContextAccessorIdentityService(
-            IHttpContextAccessor httpContextAccessor,
-            ICustomLogger<HttpContextAccessorIdentityService> logger)
+            IHttpContextAccessor httpContextAccessor = null,
+            ICustomLogger<HttpContextAccessorIdentityService> logger = null)
         {
             if (httpContextAccessor == null)
             {
-                logger.Info("IHttpContextAccessor not registered");
+                logger?.Info("IHttpContextAccessor not registered");
                 return;
             }
 
@@ -64,7 +64,7 @@ namespace SharedKernel.Infrastructure.Security
         /// 
         /// </summary>
         /// <returns></returns>
-        public bool IsAuthenticated()
+        public virtual bool IsAuthenticated()
         {
             return User?.Identity?.IsAuthenticated == true;
         }
@@ -84,12 +84,15 @@ namespace SharedKernel.Infrastructure.Security
         /// </summary>
         public string RemoteIpAddress { get; }
 
-
-        private Guid GetUserId()
+        /// <summary>
+        /// Get user id from <see cref="ClaimTypes.Sid"/>
+        /// </summary>
+        /// <returns></returns>
+        protected virtual Guid GetUserId()
         {
-            var id = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var id = User?.FindFirst(ClaimTypes.Sid)?.Value;
 
-            return string.IsNullOrWhiteSpace(id) ? Guid.Empty : new Guid(id);
+            return !string.IsNullOrWhiteSpace(id) && Guid.TryParse(id, out _) ? new Guid(id) : Guid.Empty;
         }
     }
 }

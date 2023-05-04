@@ -3,7 +3,7 @@
     /// <summary>
     /// 
     /// </summary>
-    public interface IFileSystemUnitOfWorkAsync : IUnitOfWorkAsync
+    public interface IFileSystemUnitOfWorkAsync : IUnitOfWork
     {
     }
 }

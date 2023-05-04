@@ -1,31 +1,67 @@
-﻿using SharedKernel.Domain.Events;
+using SharedKernel.Domain.Events;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SharedKernel.Infrastructure.Events.InMemory
 {
-    internal class InMemoryDomainEventsConsumer
+    /// <summary>
+    /// 
+    /// </summary>
+    public class InMemoryDomainEventsConsumer : IInMemoryDomainEventsConsumer
     {
-        private readonly DomainEventsToExecute _domainEventsToExecute;
-        private readonly DomainEventMediator _domainEventMediator;
+        private readonly IDomainEventMediator _domainEventMediator;
+        private readonly IDomainEventJsonSerializer _serializer;
+        private readonly ConcurrentQueue<string> _events;
 
+        /// <summary>
+        /// 
+        /// </summary>
         public InMemoryDomainEventsConsumer(
-            DomainEventsToExecute domainEventsToExecute,
-            DomainEventMediator domainEventMediator)
+            IDomainEventMediator domainEventMediator,
+            IDomainEventJsonSerializer serializer)
         {
-            _domainEventsToExecute = domainEventsToExecute;
             _domainEventMediator = domainEventMediator;
+            _serializer = serializer;
+            _events = new ConcurrentQueue<string>();
         }
 
-        public void Consume(DomainEvent @event)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="domainEvent"></param>
+        public void Add(DomainEvent domainEvent)
         {
-            var subscribers = DomainEventSubscriberInformationService.GetAllEventsSubscribers(@event);
+            var eventSerialized = _serializer.Serialize(domainEvent);
+            _events.Enqueue(eventSerialized);
+        }
 
-            foreach (var subscriber in subscribers)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="domainEvents"></param>
+        public void AddRange(IEnumerable<DomainEvent> domainEvents)
+        {
+            foreach (var @event in domainEvents)
             {
-                _domainEventsToExecute.Subscribers.Add(cancellationToken =>
-                    _domainEventMediator.ExecuteOn(@event, subscriber, cancellationToken));
+                var eventSerialized = _serializer.Serialize(@event);
+                _events.Enqueue(eventSerialized);
             }
-            //return Task.WhenAll(subscribers.Select(subscriber =>
-            //    _domainEventMediator.ExecuteOn(@event, subscriber, cancellationToken)));
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public async Task ExecuteAll(CancellationToken cancellationToken)
+        {
+            while (_events.TryDequeue(out var domainEvent))
+            {
+                await _domainEventMediator.ExecuteDomainSubscribers(domainEvent, cancellationToken);
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
         }
     }
 }

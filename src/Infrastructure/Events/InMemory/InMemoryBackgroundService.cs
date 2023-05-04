@@ -1,12 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SharedKernel.Application.Logging;
 using System;
-using System.Collections.Concurrent;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using SharedKernel.Application.Logging;
-using SharedKernel.Infrastructure.Cqrs.Commands;
 
 namespace SharedKernel.Infrastructure.Events.InMemory
 {
@@ -24,7 +21,6 @@ namespace SharedKernel.Infrastructure.Events.InMemory
         public InMemoryBackgroundService(IServiceScopeFactory serviceScopeFactory)
         {
             _serviceScopeFactory = serviceScopeFactory;
-            _serviceScopeFactory = serviceScopeFactory;
         }
 
         /// <summary>
@@ -38,28 +34,22 @@ namespace SharedKernel.Infrastructure.Events.InMemory
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                try
-                {
-                    var domainEventsToExecute = scope.ServiceProvider.GetRequiredService<DomainEventsToExecute>();
-                    var subscribers = domainEventsToExecute.Subscribers.ToList();
+                await Execute(scope);
+            }
+        }
 
-                    foreach (var subscriber in subscribers)
-                    {
-                        await subscriber(stoppingToken);
-                    }
-
-                    domainEventsToExecute.Subscribers = new ConcurrentBag<Func<CancellationToken, Task>>();
-
-                    await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    scope.ServiceProvider
-                        .GetRequiredService<ICustomLogger<QueuedHostedService>>()
-                        .Error(ex, "Error occurred executing event.");
-                }
-
-                await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+        private static async Task Execute(IServiceScope scope)
+        {
+            try
+            {
+                await scope.ServiceProvider.GetRequiredService<IInMemoryDomainEventsConsumer>()
+                    .ExecuteAll(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                scope.ServiceProvider
+                    .GetRequiredService<ICustomLogger<InMemoryBackgroundService>>()
+                    .Error(ex, "Error occurred executing event.");
             }
         }
     }

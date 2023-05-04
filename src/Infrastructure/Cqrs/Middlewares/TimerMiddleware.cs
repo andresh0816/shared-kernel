@@ -1,10 +1,9 @@
-﻿using System;
+﻿using SharedKernel.Application.Cqrs.Middlewares;
+using SharedKernel.Domain.Events;
+using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using SharedKernel.Application.Cqrs.Middlewares;
-using SharedKernel.Application.Logging;
-using SharedKernel.Domain.Security;
 
 namespace SharedKernel.Infrastructure.Cqrs.Middlewares
 {
@@ -12,24 +11,16 @@ namespace SharedKernel.Infrastructure.Cqrs.Middlewares
     /// 
     /// </summary>
     /// <typeparam name="TRequest"></typeparam>
-    /// <typeparam name="TResponse"></typeparam>
-    public class TimerBehaviour<TRequest, TResponse> : IMiddleware<TRequest, TResponse> where TRequest : IRequest<TResponse>
+    public class TimerMiddleware<TRequest> : IMiddleware<TRequest> where TRequest : IBaseRequest
     {
+        private readonly ITimeHandler _timeHandler;
         private readonly Stopwatch _timer;
-        private readonly ICustomLogger<TRequest> _customLogger;
-        private readonly IIdentityService _identityService;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="customLogger"></param>
-        /// <param name="identityService"></param>
-        public TimerBehaviour(ICustomLogger<TRequest> customLogger, IIdentityService identityService)
+        /// <summary> Constructor. </summary>
+        public TimerMiddleware(ITimeHandler timeHandler)
         {
+            _timeHandler = timeHandler;
             _timer = new Stopwatch();
-
-            _customLogger = customLogger;
-            _identityService = identityService;
         }
 
         /// <summary>
@@ -39,19 +30,15 @@ namespace SharedKernel.Infrastructure.Cqrs.Middlewares
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <param name="next"></param>
         /// <returns></returns>
-        public Task<TResponse> Handle(TRequest request, CancellationToken cancellationToken, Func<TRequest, CancellationToken, Task<TResponse>> next)
+        public async Task Handle(TRequest request, CancellationToken cancellationToken, Func<TRequest, CancellationToken, Task> next)
         {
-            var name = typeof(TRequest).Name;
-
             _timer.Start();
 
-            var response = next(request, cancellationToken);
+            await next(request, cancellationToken);
 
             _timer.Stop();
 
-            _customLogger.Info($"TimerBehaviour: {name} ({_timer.ElapsedMilliseconds} milliseconds) {_identityService.UserId} {request}");
-
-            return response;
+            _timeHandler.Handle(request, _timer);
         }
     }
 }

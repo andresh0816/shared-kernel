@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Options;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
+using SharedKernel.Application.Events;
 using SharedKernel.Domain.Events;
 using SharedKernel.Infrastructure.Cqrs.Middlewares;
 using System.Collections.Generic;
@@ -7,7 +9,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitMQ.Client;
 
 namespace SharedKernel.Infrastructure.Events.RabbitMq
 {
@@ -18,29 +19,29 @@ namespace SharedKernel.Infrastructure.Events.RabbitMq
     {
         private const string HeaderReDelivery = "redelivery_count";
         // private readonly MsSqlEventBus _failOverPublisher;
-        private readonly ExecuteMiddlewaresService _executeMiddlewaresService;
-        private readonly DomainEventJsonSerializer _domainEventJsonSerializer;
+        private readonly IDomainEventJsonSerializer _domainEventJsonSerializer;
         private readonly RabbitMqConnectionFactory _config;
+        private readonly IExecuteMiddlewaresService _executeMiddlewaresService;
         private readonly IOptions<RabbitMqConfigParams> _rabbitMqParams;
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="executeMiddlewaresService"></param>
         /// <param name="domainEventJsonSerializer"></param>
         /// <param name="config"></param>
+        /// <param name="executeMiddlewaresService"></param>
         /// <param name="rabbitMqParams"></param>
         public RabbitMqEventBus(
             // MsSqlEventBus failOverPublisher,
-            ExecuteMiddlewaresService executeMiddlewaresService,
-            DomainEventJsonSerializer domainEventJsonSerializer,
+            IDomainEventJsonSerializer domainEventJsonSerializer,
             RabbitMqConnectionFactory config,
+            IExecuteMiddlewaresService executeMiddlewaresService,
             IOptions<RabbitMqConfigParams> rabbitMqParams)
         {
             // _failOverPublisher = failOverPublisher;
-            _executeMiddlewaresService = executeMiddlewaresService;
             _domainEventJsonSerializer = domainEventJsonSerializer;
             _config = config;
+            _executeMiddlewaresService = executeMiddlewaresService;
             _rabbitMqParams = rabbitMqParams;
         }
 
@@ -50,7 +51,7 @@ namespace SharedKernel.Infrastructure.Events.RabbitMq
         /// <param name="events"></param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns></returns>
-        public Task Publish(List<DomainEvent> events, CancellationToken cancellationToken)
+        public Task Publish(IEnumerable<DomainEvent> events, CancellationToken cancellationToken)
         {
             return Task.WhenAll(events.Select(@event => Publish(@event, cancellationToken)));
         }
@@ -61,27 +62,30 @@ namespace SharedKernel.Infrastructure.Events.RabbitMq
         /// <param name="event"></param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns></returns>
-        public async Task Publish(DomainEvent @event, CancellationToken cancellationToken)
+        public Task Publish(DomainEvent @event, CancellationToken cancellationToken)
         {
-            try
+            return _executeMiddlewaresService.ExecuteAsync(@event, cancellationToken, (req, _) =>
             {
-                await _executeMiddlewaresService.ExecuteAsync(@event, cancellationToken);
+                try
+                {
+                    var serializedDomainEvent = _domainEventJsonSerializer.Serialize(req);
 
-                var serializedDomainEvent = _domainEventJsonSerializer.Serialize(@event);
+                    var channel = _config.Channel();
+                    channel.ExchangeDeclare(_rabbitMqParams.Value.ExchangeName, ExchangeType.Topic);
 
-                var channel = _config.Channel();
-                channel.ExchangeDeclare(_rabbitMqParams.Value.ExchangeName, ExchangeType.Topic);
+                    var body = Encoding.UTF8.GetBytes(serializedDomainEvent);
+                    var properties = channel.CreateBasicProperties();
+                    properties.Headers = new Dictionary<string, object> { { HeaderReDelivery, 0 } };
 
-                var body = Encoding.UTF8.GetBytes(serializedDomainEvent);
-                var properties = channel.CreateBasicProperties();
-                properties.Headers = new Dictionary<string, object> { { HeaderReDelivery, 0 } };
+                    channel.BasicPublish(_rabbitMqParams.Value.ExchangeName, req.GetEventName(), properties, body);
+                }
+                catch (RabbitMQClientException)
+                {
+                    //await _failOverPublisher.Publish(new List<DomainEvent> {domainEvent}, cancellationToken);
+                }
 
-                channel.BasicPublish(_rabbitMqParams.Value.ExchangeName, @event.GetEventName(), properties, body);
-            }
-            catch (RabbitMQClientException)
-            {
-                //await _failOverPublisher.Publish(new List<DomainEvent> {domainEvent}, cancellationToken);
-            }
+                return Task.CompletedTask;
+            });
         }
     }
 }

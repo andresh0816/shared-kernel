@@ -7,7 +7,7 @@ namespace SharedKernel.Infrastructure.Data.EntityFrameworkCore.DbContexts
     /// <summary>
     /// 
     /// </summary>
-    public interface IQueryableUnitOfWork : IUnitOfWorkAsync
+    public interface IQueryableUnitOfWork : IUnitOfWork
     {
         /// <summary>
         /// 

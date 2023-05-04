@@ -1,5 +1,5 @@
-﻿using SharedKernel.Domain.Events;
-using SharedKernel.Infrastructure.Cqrs.Middlewares;
+﻿using SharedKernel.Application.Events;
+using SharedKernel.Domain.Events;
 using StackExchange.Redis;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,22 +14,18 @@ namespace SharedKernel.Infrastructure.Events.Redis
     public class RedisEventBus : IEventBus
     {
         private readonly IConnectionMultiplexer _connectionMultiplexer;
-        private readonly ExecuteMiddlewaresService _executeMiddlewaresService;
-        private readonly DomainEventJsonSerializer _domainEventJsonSerializer;
+        private readonly IDomainEventJsonSerializer _domainEventJsonSerializer;
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="connectionMultiplexer"></param>
-        /// <param name="executeMiddlewaresService"></param>
         /// <param name="domainEventJsonSerializer"></param>
         public RedisEventBus(
             IConnectionMultiplexer connectionMultiplexer,
-            ExecuteMiddlewaresService executeMiddlewaresService,
-            DomainEventJsonSerializer domainEventJsonSerializer)
+            IDomainEventJsonSerializer domainEventJsonSerializer)
         {
             _connectionMultiplexer = connectionMultiplexer;
-            _executeMiddlewaresService = executeMiddlewaresService;
             _domainEventJsonSerializer = domainEventJsonSerializer;
         }
 
@@ -39,7 +35,7 @@ namespace SharedKernel.Infrastructure.Events.Redis
         /// <param name="events"></param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns></returns>
-        public Task Publish(List<DomainEvent> events, CancellationToken cancellationToken)
+        public Task Publish(IEnumerable<DomainEvent> events, CancellationToken cancellationToken)
         {
             return Task.WhenAll(events.Select(@event => Publish(@event, cancellationToken)));
         }
@@ -50,11 +46,10 @@ namespace SharedKernel.Infrastructure.Events.Redis
         /// <param name="event"></param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns></returns>
-        public async Task Publish(DomainEvent @event, CancellationToken cancellationToken)
+        public Task Publish(DomainEvent @event, CancellationToken cancellationToken)
         {
-            await _executeMiddlewaresService.ExecuteAsync(@event, cancellationToken);
             var eventAsString = _domainEventJsonSerializer.Serialize(@event);
-            await _connectionMultiplexer.GetSubscriber().PublishAsync("*", eventAsString);
+            return _connectionMultiplexer.GetSubscriber().PublishAsync("*", eventAsString);
         }
     }
 }

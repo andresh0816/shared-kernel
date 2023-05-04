@@ -1,6 +1,4 @@
-using System;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 using SharedKernel.Application.Cqrs.Commands;
 using SharedKernel.Application.Cqrs.Commands.Handlers;
 using SharedKernel.Application.Validator;
@@ -8,6 +6,8 @@ using SharedKernel.Infrastructure.Cqrs.Commands.InMemory;
 using SharedKernel.Infrastructure.Cqrs.Middlewares;
 using SharedKernel.Infrastructure.System;
 using SharedKernel.Infrastructure.Validators;
+using System;
+using System.Reflection;
 
 namespace SharedKernel.Infrastructure.Cqrs.Commands
 {
@@ -21,11 +21,13 @@ namespace SharedKernel.Infrastructure.Cqrs.Commands
         /// </summary>
         /// <param name="services"></param>
         /// <param name="applicationAssembly"></param>
+        /// <param name="serviceLifetime"></param>
         /// <returns></returns>
         public static IServiceCollection AddCommandsHandlers(this IServiceCollection services,
-            Assembly applicationAssembly)
+            Assembly applicationAssembly, ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
         {
-            return services.AddFromAssembly(applicationAssembly, typeof(ICommandRequestHandler<>), typeof(ICommandRequestHandler<,>));
+            return services.AddFromAssembly(applicationAssembly, serviceLifetime,
+                typeof(IRequestHandler<>), typeof(IRequestHandler<,>));
         }
 
         /// <summary>
@@ -33,11 +35,13 @@ namespace SharedKernel.Infrastructure.Cqrs.Commands
         /// </summary>
         /// <param name="services"></param>
         /// <param name="commandHandlerType"></param>
+        /// <param name="serviceLifetime"></param>
         /// <returns></returns>
         public static IServiceCollection AddCommandsHandlers(this IServiceCollection services,
-            Type commandHandlerType)
+            Type commandHandlerType, ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
         {
-            return services.AddFromAssembly(commandHandlerType.Assembly, typeof(ICommandRequestHandler<>), typeof(ICommandRequestHandler<,>));
+            return services.AddFromAssembly(commandHandlerType.Assembly, serviceLifetime,
+                typeof(IRequestHandler<>), typeof(IRequestHandler<,>));
         }
 
         /// <summary>
@@ -49,7 +53,7 @@ namespace SharedKernel.Infrastructure.Cqrs.Commands
         {
             return services
                 .AddCommandBus()
-                .AddTransient<ICommandBus, InMemoryCommandBus>();
+                .AddTransient<ISender, InMemoryCommandBus>();
         }
 
         private static IServiceCollection AddCommandBus(this IServiceCollection services)
@@ -57,7 +61,7 @@ namespace SharedKernel.Infrastructure.Cqrs.Commands
             return services
                 .AddHostedService<QueuedHostedService>()
                 .AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>()
-                .AddTransient<ExecuteMiddlewaresService>()
+                .AddTransient<IExecuteMiddlewaresService, ExecuteMiddlewaresService>()
                 .AddTransient(typeof(IEntityValidator<>), typeof(FluentValidator<>));
         }
     }

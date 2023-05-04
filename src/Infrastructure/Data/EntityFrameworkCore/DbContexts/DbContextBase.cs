@@ -1,11 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SharedKernel.Application.System;
 using SharedKernel.Domain.Aggregates;
-using SharedKernel.Domain.Events;
-using SharedKernel.Infrastructure.Exceptions;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Data;
 using System.Linq;
 using System.Reflection;
@@ -23,7 +18,7 @@ namespace SharedKernel.Infrastructure.Data.EntityFrameworkCore.DbContexts
 
         private readonly Assembly _assemblyConfigurations;
         private readonly IAuditableService _auditableService;
-        private readonly IEventBus _eventBus;
+        private readonly IValidatableObjectService _validatableObjectService;
 
         #endregion
 
@@ -36,13 +31,13 @@ namespace SharedKernel.Infrastructure.Data.EntityFrameworkCore.DbContexts
         /// <param name="schema"></param>
         /// <param name="assemblyConfigurations"></param>
         /// <param name="auditableService"></param>
-        /// <param name="eventBus"></param>
+        /// <param name="validatableObjectService"></param>
         public DbContextBase(DbContextOptions options, string schema, Assembly assemblyConfigurations,
-            IAuditableService auditableService, IEventBus eventBus) : base(options)
+            IValidatableObjectService validatableObjectService, IAuditableService auditableService) : base(options)
         {
             _assemblyConfigurations = assemblyConfigurations;
             _auditableService = auditableService;
-            _eventBus = eventBus;
+            _validatableObjectService = validatableObjectService;
             Schema = schema;
             // ReSharper disable once VirtualMemberCallInConstructor
             ChangeTracker.LazyLoadingEnabled = false;
@@ -103,19 +98,15 @@ namespace SharedKernel.Infrastructure.Data.EntityFrameworkCore.DbContexts
         {
             try
             {
-                Validate();
+                _validatableObjectService?.ValidateDomainEntities(this);
+                _validatableObjectService?.Validate(this);
                 _auditableService?.Audit(this);
-                var result = await base.SaveChangesAsync(cancellationToken);
-
-                if (_eventBus != default)
-                    await DispatchDomainEventsAsync(cancellationToken);
-
-                return result;
+                return await base.SaveChangesAsync(cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 await RollbackAsync(cancellationToken);
-                throw new SharedKernelInfrastructureException(nameof(ExceptionCodes.EF_CORE_SAVE_CHANGES), ex);
+                throw;// new SharedKernelInfrastructureException(nameof(ExceptionCodes.EF_CORE_SAVE_CHANGES), ex);
             }
         }
 
@@ -176,34 +167,6 @@ namespace SharedKernel.Infrastructure.Data.EntityFrameworkCore.DbContexts
             foreach (var relationship in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))
                 relationship.DeleteBehavior = DeleteBehavior.Restrict;
             modelBuilder.ApplyConfigurationsFromAssembly(_assemblyConfigurations);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        protected virtual void Validate()
-        {
-            var changedEntities = ChangeTracker
-                .Entries()
-                .Where(_ => _.State == EntityState.Added ||
-                            _.State == EntityState.Modified);
-
-            var errors = new List<ValidationResult>(); // all errors are here
-            foreach (var e in changedEntities)
-            {
-                var vc = new ValidationContext(e.Entity, null, null);
-                Validator.TryValidateObject(e.Entity, vc, errors, true);
-            }
-        }
-
-        private Task DispatchDomainEventsAsync(CancellationToken cancellationToken)
-        {
-            var domainEvents = ChangeTracker
-                .Entries<IAggregateRoot>()
-                .SelectMany(x => x.Entity.PullDomainEvents())
-                .ToList();
-
-            return _eventBus != null ? _eventBus?.Publish(domainEvents, cancellationToken) : TaskHelper.CompletedTask;
         }
 
         #endregion

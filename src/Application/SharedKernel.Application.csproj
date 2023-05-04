@@ -1,57 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net5.0</TargetFrameworks>
-    <NeutralLanguage>en</NeutralLanguage>
-    <PackageId>SharedKernel.Application</PackageId>
-    <Version>5.0.20</Version>
-    <RepositoryUrl></RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageIcon></PackageIcon>
-    <Authors>Andres Hernandez</Authors>
-    <Company></Company>
-    <Description></Description>
-    <DocumentationFile></DocumentationFile>
-    <PackageTags></PackageTags>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net6.0</TargetFrameworks>
+		<Authors>Andres Hernandez</Authors>
+		<Company>Hernandez Corporation</Company>
+		<Version>7.0.3</Version>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net40|AnyCPU'">
-    <DocumentationFile>SharedKernel.Application.xml</DocumentationFile>
-  </PropertyGroup>
+	<ItemGroup>
+		<None Include="Exceptions\ExceptionCodes.resx" Generator="ResXFileCodeGenerator" LastGenOutput="ExceptionCodes.Designer.cs" CopyToOutputDirectory="Always" />
+		<EmbeddedResource Remove="Exceptions\ExceptionCodes.resx" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Remove="Exceptions\ExceptionCodes.es-ES.resx" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Domain\SharedKernel.Domain.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Remove="icon.png" />
-    <None Remove="icon.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Exceptions\ExceptionCodes.es-ES.resx">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Domain\SharedKernel.Domain.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Exceptions\ExceptionCodes.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>ExceptionCodes.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Exceptions\ExceptionCodes.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>ExceptionCodes.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
+	<ItemGroup>
+	  <Compile Update="Exceptions\ExceptionCodes.Designer.cs">
+	    <DesignTime>True</DesignTime>
+	    <AutoGen>True</AutoGen>
+	    <DependentUpon>ExceptionCodes.resx</DependentUpon>
+	  </Compile>
+	</ItemGroup>
 
 </Project>

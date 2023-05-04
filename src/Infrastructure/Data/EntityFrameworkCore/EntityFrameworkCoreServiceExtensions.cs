@@ -34,18 +34,19 @@ namespace SharedKernel.Infrastructure.Data.EntityFrameworkCore
             var connectionString = configuration.GetConnectionString(connectionStringName);
 
             services.AddHealthChecks()
-                .AddSqlServer(connectionString, "SELECT 1;", "Sql Server EFCore",
+                .AddSqlServer(connectionString!, "SELECT 1;", "Sql Server EFCore",
                     HealthStatus.Unhealthy, new[] { "DB", "Sql", "SqlServer" });
 
             services.AddCommonDataServices();
 
-            services.AddDbContext<TContext>(s => s
-                .UseSqlServer(connectionString)
-                .EnableSensitiveDataLogging(), serviceLifetime);
+#if NET461 || NETSTANDARD2_1 || NETCOREAPP3_1
 
-#if NET461
+            services.AddDbContext<TContext>(s => s.UseSqlServer(connectionString), serviceLifetime);
+
             services.AddTransient(typeof(IDbContextFactory<>), typeof(DbContextFactory<>));
 #else
+            services.AddDbContext<TContext>(s => s.UseSqlServer(connectionString,
+                    e => e.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)), serviceLifetime);
             services.AddDbContextFactory<TContext>(lifetime: serviceLifetime);
 #endif
 
@@ -62,17 +63,29 @@ namespace SharedKernel.Infrastructure.Data.EntityFrameworkCore
             var connectionString = configuration.GetConnectionString(connectionStringName);
 
             services.AddHealthChecks()
-                .AddNpgSql(connectionString, "SELECT 1;", null, "Postgre EFCore");
+                .AddNpgSql(connectionString!, "SELECT 1;", null, "Postgre EFCore");
 
             services.AddCommonDataServices();
 
-            services.AddDbContext<TContext>(p => p
-                .UseNpgsql(connectionString)
-                .EnableSensitiveDataLogging(), serviceLifetime);
+#if NET461 || NETSTANDARD2_1 || NETCOREAPP3_1
+
+            services.AddDbContext<TContext>(p => p.UseNpgsql(connectionString), serviceLifetime);
+
+            services.AddTransient(typeof(IDbContextFactory<>), typeof(DbContextFactory<>));
+#else
+            services.AddDbContext<TContext>(p => p.UseNpgsql(connectionString,
+                            e => e.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)), serviceLifetime);
+
+            services.AddDbContextFactory<TContext>(lifetime: serviceLifetime);
+#endif
 
             return services;
         }
 
+        /// <summary>
+        /// Register common Ef Core data services
+        /// </summary>
+        /// <param name="services"></param>
         private static void AddCommonDataServices(this IServiceCollection services)
         {
             services
@@ -81,7 +94,8 @@ namespace SharedKernel.Infrastructure.Data.EntityFrameworkCore
                 .AddTransient<IIdentityService, HttpContextAccessorIdentityService>()
                 .AddTransient<IDateTime, MachineDateTime>()
                 .AddTransient<IGuid, GuidGenerator>()
-                .AddTransient<IAuditableService, AuditableService>();
+                .AddTransient<IAuditableService, AuditableService>()
+                .AddTransient<IValidatableObjectService, ValidatableObjectService>();
         }
     }
 }

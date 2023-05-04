@@ -1,65 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net5.0</TargetFrameworks>
-    <NeutralLanguage>en</NeutralLanguage>
-    <PackageId>SharedKernel.Domain</PackageId>
-    <Version>5.0.20</Version>
-    <RepositoryUrl></RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageIcon></PackageIcon>
-    <Authors>Andres Hernandez</Authors>
-    <Company>Andres Hernandez</Company>
-    <Description></Description>
-    <DocumentationFile></DocumentationFile>
-    <PackageTags></PackageTags>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+		<Authors>Andres Hernandez</Authors>
+		<Company>Hernandez Corporation</Company>
+		<Version>7.0.3</Version>
+		<!--<TreatWarningsAsErrors>true</TreatWarningsAsErrors>-->
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net40|AnyCPU'">
-    <DocumentationFile>SharedKernel.Domain.xml</DocumentationFile>
-  </PropertyGroup>
+	<ItemGroup>
+		<None Include="Exceptions\ExceptionCodes.resx" Generator="ResXFileCodeGenerator" LastGenOutput="ExceptionCodes.Designer.cs" CopyToOutputDirectory="Always" />
+		<EmbeddedResource Remove="Exceptions\ExceptionCodes.resx" />
+	</ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net5|AnyCPU'">
-    <WarningLevel>2</WarningLevel>
-  </PropertyGroup>
+	<ItemGroup>
+		<Compile Update="Exceptions\ExceptionCodes.Designer.cs">
+			<DesignTime>True</DesignTime>
+			<AutoGen>True</AutoGen>
+			<DependentUpon>ExceptionCodes.resx</DependentUpon>
+		</Compile>
+	</ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Remove="Exceptions\ExceptionCodes.resx" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="icon.png" />
-    <None Remove="icon.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Exceptions\ExceptionCodes.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>ExceptionCodes.Designer.cs</LastGenOutput>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Exceptions\ExceptionCodes.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>ExceptionCodes.resx</DependentUpon>
-    </Compile>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
+	<!--<ItemGroup>
+	  <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
+	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+	    <PrivateAssets>all</PrivateAssets>
+	  </PackageReference>
+	</ItemGroup>-->
 
 </Project>

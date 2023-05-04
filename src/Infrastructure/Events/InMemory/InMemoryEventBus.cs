@@ -1,39 +1,53 @@
+using SharedKernel.Application.Events;
 using SharedKernel.Domain.Events;
-using SharedKernel.Infrastructure.Cqrs.Middlewares;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace SharedKernel.Infrastructure.Events.InMemory
 {
-    internal class InMemoryEventBus : IEventBus
+    /// <summary>
+    /// In memory event bus
+    /// </summary>
+    public class InMemoryEventBus : IEventBus
     {
-        private readonly InMemoryDomainEventsConsumer _inMemoryConsumer;
-        private readonly ExecuteMiddlewaresService _executeMiddlewaresService;
+        private readonly IInMemoryDomainEventsConsumer _domainEventsToExecute;
 
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="domainEventsToExecute"></param>
         public InMemoryEventBus(
-            InMemoryDomainEventsConsumer inMemoryConsumer,
-            ExecuteMiddlewaresService executeMiddlewaresService)
+            IInMemoryDomainEventsConsumer domainEventsToExecute)
         {
-            _inMemoryConsumer = inMemoryConsumer;
-            _executeMiddlewaresService = executeMiddlewaresService;
+            _domainEventsToExecute = domainEventsToExecute;
         }
 
+        /// <summary>
+        /// Publish an event to event bus
+        /// </summary>
+        /// <param name="event"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task Publish(DomainEvent @event, CancellationToken cancellationToken)
         {
             return Publish(new List<DomainEvent> { @event }, cancellationToken);
         }
 
-        public async Task Publish(List<DomainEvent> events, CancellationToken cancellationToken)
+        /// <summary>
+        /// Publish an event to event bus
+        /// </summary>
+        /// <param name="events"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public Task Publish(IEnumerable<DomainEvent> events, CancellationToken cancellationToken)
         {
             if (events == default)
-                return;
+                return Task.CompletedTask;
 
-            await Task.WhenAll(events.Select(@event =>
-                _executeMiddlewaresService.ExecuteAsync(@event, cancellationToken)));
+            _domainEventsToExecute.AddRange(events);
 
-            events.ForEach(@event => _inMemoryConsumer.Consume(@event));
+            return Task.CompletedTask;
         }
     }
 }

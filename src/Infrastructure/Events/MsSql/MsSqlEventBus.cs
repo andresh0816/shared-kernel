@@ -1,9 +1,11 @@
+using Microsoft.EntityFrameworkCore;
+using SharedKernel.Application.Events;
+using SharedKernel.Domain.Events;
+using SharedKernel.Infrastructure.Events.Shared;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using SharedKernel.Domain.Events;
 
 namespace SharedKernel.Infrastructure.Events.MsSql
 {
@@ -29,7 +31,7 @@ namespace SharedKernel.Infrastructure.Events.MsSql
         /// <param name="events"></param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns></returns>
-        public async Task Publish(List<DomainEvent> events, CancellationToken cancellationToken)
+        public async Task Publish(IEnumerable<DomainEvent> events, CancellationToken cancellationToken)
         {
             await Task.WhenAll(events.Select(domainEvent => Publish(domainEvent, cancellationToken)));
             await _context.SaveChangesAsync(cancellationToken);

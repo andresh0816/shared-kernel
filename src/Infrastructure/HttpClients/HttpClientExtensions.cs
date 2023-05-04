@@ -1,13 +1,11 @@
 ﻿#if !NET461 && !NETSTANDARD2_1
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Polly;
+using SharedKernel.Infrastructure.RetryPolicies;
+using System;
+using System.Net.Http;
 
 namespace SharedKernel.Infrastructure.HttpClients
 {
@@ -16,51 +14,79 @@ namespace SharedKernel.Infrastructure.HttpClients
     /// </summary>
     public static class HttpClientExtensions
     {
-        /// <summary>
-        /// Add http client with bearer token
-        /// </summary>
-        /// <typeparam name="TClient"></typeparam>
+        /// <summary> Add http client with bearer token. </summary>
         /// <param name="services"></param>
         /// <param name="name"></param>
         /// <param name="uri"></param>
+        /// <param name="configuration"></param>
         /// <returns></returns>
-        public static IServiceCollection AddHttpClientBearerToken<TClient>(this IServiceCollection services, string name, string uri) where TClient : class
+        public static IServiceCollection AddHttpClientBearerToken(this IServiceCollection services,
+            IConfiguration configuration, string name, Uri uri)
         {
-            services.AddHttpClient<TClient>(name)
-                .ConfigureHttpClient(c => c.BaseAddress = new Uri(uri))
-                .AddHttpMessageHandler<HttpClientAuthorizationDelegatingHandler>();
+            return services
+                .AddHttpClient(name)
+                .ConfigureHttpClient<HttpClientAuthorizationDelegatingHandler>(services, configuration, name, uri);
+        }
+
+        /// <summary> Add http client with bearer token. </summary>
+        /// <param name="services"></param>
+        /// <param name="name"></param>
+        /// <param name="uri"></param>
+        /// <param name="configuration"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddHttpClientBearerToken<THandler>(this IServiceCollection services,
+            IConfiguration configuration, string name, Uri uri) where THandler : DelegatingHandler
+        {
+            return services
+                .AddHttpClient(name)
+                .ConfigureHttpClient<THandler>(services, configuration, name, uri);
+        }
+
+        /// <summary> Add http client with bearer token. </summary>
+        /// <typeparam name="TClient"></typeparam>
+        /// <typeparam name="THandler"></typeparam>
+        /// <param name="services"></param>
+        /// <param name="name"></param>
+        /// <param name="uri"></param>
+        /// <param name="configuration"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddHttpClientBearerToken<TClient, THandler>(this IServiceCollection services,
+            IConfiguration configuration, string name, Uri uri) where THandler : DelegatingHandler
+            where TClient : class
+        {
+            return services
+                .AddHttpClient<TClient>(name)
+                .ConfigureHttpClient<THandler>(services, configuration, name, uri);
+        }
+
+        /// <summary>  </summary>
+        public static IServiceCollection ConfigureHttpClient<THandler>(this IHttpClientBuilder clientBuilder, IServiceCollection services,
+            IConfiguration configuration, string name, Uri uri) where THandler : DelegatingHandler
+        {
+            var retrieverOptions = RetrieverOptions<THandler>(services, configuration, name, uri);
+
+            clientBuilder
+                .ConfigureHttpClient(c => c.BaseAddress = uri)
+                .AddHttpMessageHandler<THandler>()
+                .AddTransientHttpErrorPolicy(policyBuilder =>
+                    policyBuilder.WaitAndRetryAsync(retrieverOptions.RetryCount, retrieverOptions.RetryAttempt()));
 
             return services;
         }
-    }
 
-    internal class HttpClientAuthorizationDelegatingHandler : DelegatingHandler
-    {
-        private readonly IHttpContextAccessor _httpContextAccessor;
-
-        public HttpClientAuthorizationDelegatingHandler(IHttpContextAccessor httpContextAccessor)
+        /// <summary>  </summary>
+        public static RetrieverOptions RetrieverOptions<THandler>(IServiceCollection services, IConfiguration configuration, string name,
+            Uri uri) where THandler : DelegatingHandler
         {
-            _httpContextAccessor = httpContextAccessor;
-        }
+            var retrieverOptions = new RetrieverOptions();
+            configuration.GetSection("RetrieverOptions").Bind(retrieverOptions);
 
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            if (_httpContextAccessor.HttpContext == null)
-                return await base.SendAsync(request, cancellationToken);
+            services.AddHealthChecks()
+                .AddUrlGroup(uri, name, HealthStatus.Degraded);
 
+            services.AddTransient<THandler>();
 
-            var authorizationHeader = _httpContextAccessor.HttpContext.Request.Headers["Authorization"];
-
-            if (!string.IsNullOrEmpty(authorizationHeader))
-                request.Headers.Add("Authorization", new List<string> { authorizationHeader });
-
-            const string accessToken = "access_token";
-
-            var token = await _httpContextAccessor.HttpContext.GetTokenAsync(accessToken);
-
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            return await base.SendAsync(request, cancellationToken);
+            return retrieverOptions;
         }
     }
 }

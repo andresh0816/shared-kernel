@@ -2,6 +2,10 @@ using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using SharedKernel.Application.Logging;
+using SharedKernel.Application.Settings;
+using SharedKernel.Application.System;
+using SharedKernel.Infrastructure.Events.Shared.RegisterEventSubscribers;
+using SharedKernel.Infrastructure.RetryPolicies;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -13,14 +17,15 @@ namespace SharedKernel.Infrastructure.Events.RabbitMq
     /// <summary>
     /// 
     /// </summary>
-    public class RabbitMqDomainEventsConsumer
+    internal class RabbitMqDomainEventsConsumer
     {
         private readonly RabbitMqConnectionFactory _config;
-        private readonly DomainEventMediator _domainEventMediator;
+        private readonly IDomainEventMediator _domainEventMediator;
         private readonly ICustomLogger<RabbitMqDomainEventsConsumer> _logger;
         private readonly IOptions<RabbitMqConfigParams> _rabbitMqParams;
-        private readonly DomainEventJsonDeserializer _deserializer;
-        private const int MaxRetries = 2;
+        private readonly IDomainEventSubscriberProviderFactory _domainEventSubscriberProviderFactory;
+        private readonly IDomainEventJsonDeserializer _deserializer;
+        private readonly RetrieverOptions _retrieverOptions;
         private const string HeaderRedelivery = "redelivery_count";
 
         /// <summary>
@@ -31,18 +36,24 @@ namespace SharedKernel.Infrastructure.Events.RabbitMq
         /// <param name="domainEventMediator"></param>
         /// <param name="logger"></param>
         /// <param name="rabbitMqParams"></param>
+        /// <param name="options"></param>
+        /// <param name="domainEventSubscriberProviderFactory"></param>
         public RabbitMqDomainEventsConsumer(
-            DomainEventJsonDeserializer deserializer,
+            IDomainEventJsonDeserializer deserializer,
             RabbitMqConnectionFactory config,
-            DomainEventMediator domainEventMediator,
+            IDomainEventMediator domainEventMediator,
             ICustomLogger<RabbitMqDomainEventsConsumer> logger,
-            IOptions<RabbitMqConfigParams> rabbitMqParams)
+            IOptions<RabbitMqConfigParams> rabbitMqParams,
+            IOptionsService<RetrieverOptions> options,
+            IDomainEventSubscriberProviderFactory domainEventSubscriberProviderFactory)
         {
             _deserializer = deserializer;
             _config = config;
             _domainEventMediator = domainEventMediator;
             _logger = logger;
             _rabbitMqParams = rabbitMqParams;
+            _domainEventSubscriberProviderFactory = domainEventSubscriberProviderFactory;
+            _retrieverOptions = options.Value;
         }
 
         /// <summary>
@@ -51,19 +62,19 @@ namespace SharedKernel.Infrastructure.Events.RabbitMq
         /// <returns></returns>
         public Task Consume()
         {
-            DomainEventSubscriberInformationService.GetAllEventsSubscribers().ForEach(eventSubscriber => ConsumeMessages(eventSubscriber));
+            _domainEventSubscriberProviderFactory.GetAll().ForEach(a => ConsumeMessages(a.SubscriberName(), a.GetSubscriber()));
             return Task.CompletedTask;
         }
 
-        private void ConsumeMessages(string eventSubscriber, ushort prefetchCount = 10)
+        private void ConsumeMessages(string queue, Type eventSubscriberType, ushort prefetchCount = 10)
         {
             var channel = _config.Channel();
 
-            DeclareQueue(channel, eventSubscriber);
+            DeclareQueue(channel, queue);
 
             channel.BasicQos(0, prefetchCount, false);
             var consumer = new EventingBasicConsumer(channel);
-            consumer.Received += async (_, ea) =>
+            consumer.Received += (_, ea) =>
             {
                 try
                 {
@@ -72,18 +83,18 @@ namespace SharedKernel.Infrastructure.Events.RabbitMq
 
                     var @event = _deserializer.Deserialize(message);
 
-                    await _domainEventMediator.ExecuteOn(@event, eventSubscriber, CancellationToken.None);
+                    TaskHelper.RunSync(_domainEventMediator.ExecuteOn(message, @event, eventSubscriberType, CancellationToken.None));
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     _logger.Error(ex, ex.Message);
-                    HandleConsumptionError(ea, eventSubscriber);
+                    HandleConsumptionError(ea, queue);
                 }
 
                 channel.BasicAck(ea.DeliveryTag, false);
             };
 
-            channel.BasicConsume(eventSubscriber, false, consumer);
+            channel.BasicConsume(queue, false, consumer);
         }
 
         private static void DeclareQueue(IModel channel, string queue)
@@ -99,9 +110,9 @@ namespace SharedKernel.Infrastructure.Events.RabbitMq
                 SendToRetry(ea, queue);
         }
 
-        private static bool HasBeenRedeliveredTooMuch(IDictionary<string, object> headers)
+        private bool HasBeenRedeliveredTooMuch(IDictionary<string, object> headers)
         {
-            return (int)(headers[HeaderRedelivery] ?? 0) >= MaxRetries;
+            return (int)(headers[HeaderRedelivery] ?? 0) >= _retrieverOptions.RetryCount;
         }
 
         private void SendToRetry(BasicDeliverEventArgs ea, string queue)

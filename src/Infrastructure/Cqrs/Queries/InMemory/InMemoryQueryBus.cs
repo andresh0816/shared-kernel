@@ -1,13 +1,13 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using SharedKernel.Application.Cqrs.Queries;
+using SharedKernel.Infrastructure.Cqrs.Middlewares;
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using SharedKernel.Application.Cqrs.Queries;
-using SharedKernel.Infrastructure.Cqrs.Middlewares;
 
 namespace SharedKernel.Infrastructure.Cqrs.Queries.InMemory
 {
@@ -16,9 +16,9 @@ namespace SharedKernel.Infrastructure.Cqrs.Queries.InMemory
     /// </summary>
     public class InMemoryQueryBus : IQueryBus
     {
-        private readonly ExecuteMiddlewaresService _executeMiddlewaresService;
+        private readonly IExecuteMiddlewaresService _executeMiddlewaresService;
         private readonly IServiceProvider _serviceProvider;
-        private static readonly ConcurrentDictionary<Type, object> QueryHandlers = new ConcurrentDictionary<Type, object>();
+        private static readonly ConcurrentDictionary<Type, object> QueryHandlers = new();
 
         /// <summary>
         /// 
@@ -26,7 +26,7 @@ namespace SharedKernel.Infrastructure.Cqrs.Queries.InMemory
         /// <param name="executeMiddlewaresService"></param>
         /// <param name="serviceProvider"></param>
         public InMemoryQueryBus(
-            ExecuteMiddlewaresService executeMiddlewaresService,
+            IExecuteMiddlewaresService executeMiddlewaresService,
             IServiceProvider serviceProvider)
         {
             _executeMiddlewaresService = executeMiddlewaresService;
@@ -40,16 +40,18 @@ namespace SharedKernel.Infrastructure.Cqrs.Queries.InMemory
         /// <param name="query"></param>
         /// <param name="cancellationToken">Propagates notification that operations should be canceled.</param>
         /// <returns></returns>
-        public async Task<TResponse> Ask<TResponse>(IQueryRequest<TResponse> query, CancellationToken cancellationToken)
+        public Task<TResponse> Ask<TResponse>(IQueryRequest<TResponse> query, CancellationToken cancellationToken)
         {
-            await _executeMiddlewaresService.ExecuteAsync(query, cancellationToken);
+            return _executeMiddlewaresService.ExecuteAsync(query, cancellationToken, (req, c) =>
+            {
+                var handler = GetWrappedHandlers(req);
 
-            var handler = GetWrappedHandlers(query);
+                if (handler == null)
+                    throw new QueryNotRegisteredException(req.ToString());
 
-            if (handler == null)
-                throw new QueryNotRegisteredError(query.ToString());
+                return handler.Handle(req, _serviceProvider, c);
+            });
 
-            return await handler.Handle(query, _serviceProvider, cancellationToken);
         }
 
         private QueryHandlerWrapper<TResponse> GetWrappedHandlers<TResponse>(IQueryRequest<TResponse> query)

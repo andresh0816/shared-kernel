@@ -1,7 +1,7 @@
-using AsyncKeyedLock;
 using Microsoft.Extensions.DependencyInjection;
 using SharedKernel.Application.Logging;
 using SharedKernel.Application.Reporting;
+using SharedKernel.Application.RetryPolicies;
 using SharedKernel.Application.Security.Cryptography;
 using SharedKernel.Application.Serializers;
 using SharedKernel.Application.Settings;
@@ -10,6 +10,7 @@ using SharedKernel.Application.System.Threading;
 using SharedKernel.Domain.Security;
 using SharedKernel.Infrastructure.Logging;
 using SharedKernel.Infrastructure.Reporting;
+using SharedKernel.Infrastructure.RetryPolicies;
 using SharedKernel.Infrastructure.Security;
 using SharedKernel.Infrastructure.Security.Cryptography;
 using SharedKernel.Infrastructure.Serializers;
@@ -40,17 +41,13 @@ namespace SharedKernel.Infrastructure
                 .AddTransient<ICulture, ThreadUiCulture>()
                 .AddTransient<ICustomLogger, DefaultCustomLogger>()
                 .AddTransient<IDateTime, MachineDateTime>()
-                .AddTransient<IEncryptionHexHelper, EncryptionHexHelper>()
+                .AddTransient<IMd5Encryptor, Md5Encryptor>()
                 .AddTransient<IGuid, GuidGenerator>()
                 .AddTransient<IIdentityService, HttpContextAccessorIdentityService>()
+                .AddTransient<IParallel, Parallel>()
                 .AddTransient<IRandomNumberGenerator, RandomNumberGenerator>()
                 .AddTransient<IReportRenderer, ReportRenderer>()
-                .AddSingleton(new AsyncKeyedLocker<string>(o =>
-                {
-                    o.PoolSize = 20;
-                    o.PoolInitialFill = 1;
-                }))
-                .AddTransient<ISemaphore, CustomSemaphore>()
+                .AddTransient<IRetriever, PollyRetriever>()
                 .AddTransient<ISha256, Sha256>()
                 .AddTransient<IStreamHelper, StreamHelper>()
                 .AddTransient<IStringHelper, StringHelper>()

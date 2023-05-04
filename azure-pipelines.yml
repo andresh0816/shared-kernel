@@ -1,13 +1,13 @@
-# ASP.NET Core (.NET Framework)
-# Build and test ASP.NET Core projects targeting the full .NET Framework.
-# Add steps that publish symbols, save build artifacts, and more:
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
 trigger:
 - master
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: ubuntu-latest
 
 variables:
   solution: '**/*.sln'
@@ -15,44 +15,35 @@ variables:
   buildConfiguration: 'Release'
 
 steps:
-- task: UseDotNet@2
-  displayName: 'Select .NET Version'
+- task: NuGetToolInstaller@1
+  displayName: 'Use NuGet 6'
   inputs:
-    version: '5.x'
+    versionSpec: 6.x
+
+- task: NuGetCommand@2
+  displayName: 'Restore NuGet Packages'
+  inputs:
+    restoreSolution: '$(solution)'
 
 - task: DotNetCoreCLI@2
-  displayName: 'Build projects'
+  displayName: 'Build Projects'
   inputs:
     command: 'build'
-    configuration: 'Release'
     projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
 
 - task: DotNetCoreCLI@2
-  displayName: "Restore projects"
-  inputs:
-    command: 'restore'
-    configuration: 'Release'
-    projects: '**/*.csproj'
-    feedsToUse: 'select'
-    noCache: true
-
-- task: DotNetCoreCLI@2
-  displayName: 'Pack projects'
+  displayName: 'Packing Projects'
   inputs:
     command: 'pack'
-    configuration: 'Debug'
     packagesToPack: '**/*.csproj'
     nobuild: true
-    versioningScheme: 'byPrereleaseNumber'
-    majorVersion: '1'
-    minorVersion: '0'
-    patchVersion: '0'
+    versioningScheme: 'off'
 
 - task: DotNetCoreCLI@2
-  displayName: 'Push projects'
+  displayName: 'Publishing Packages'
   inputs:
     command: 'push'
-    configuration: 'Release'
-    packagesToPush: '**/*.nupkg'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     nuGetFeedType: 'internal'
-    publishVstsFeed: '09666f3f-d343-49f2-a8cf-2cd8e4e64b95/ea97ba70-15b0-43e8-a5e5-5d08b3a67490'
+    publishVstsFeed: '861e190c-cc2a-43dc-b1ba-9cf4605798f9/c9f88367-2baa-491c-8412-c05be46920b6'

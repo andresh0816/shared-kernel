@@ -1,7 +1,7 @@
-﻿using System;
+﻿using SharedKernel.Domain.Events;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using SharedKernel.Domain.Events;
 
 namespace SharedKernel.Application.Cqrs.Middlewares
 {
@@ -9,7 +9,7 @@ namespace SharedKernel.Application.Cqrs.Middlewares
     /// Middleware that runs both on the command bus, as well as on the query and event bus
     /// </summary>
     /// <typeparam name="TRequest"></typeparam>
-    public interface IMiddleware<TRequest> where TRequest : IRequest
+    public interface IMiddleware<TRequest> where TRequest : IBaseRequest
     {
         /// <summary>
         /// Middleware that runs both on the command bus, as well as on the query and event bus

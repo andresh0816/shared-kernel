@@ -1,12 +1,12 @@
-﻿using System;
-using Microsoft.Extensions.DependencyInjection;
-using SharedKernel.Infrastructure.System;
-using System.Reflection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using SharedKernel.Application.Cqrs.Queries;
 using SharedKernel.Application.Validator;
 using SharedKernel.Infrastructure.Cqrs.Middlewares;
 using SharedKernel.Infrastructure.Cqrs.Queries.InMemory;
+using SharedKernel.Infrastructure.System;
 using SharedKernel.Infrastructure.Validators;
+using System;
+using System.Reflection;
 
 namespace SharedKernel.Infrastructure.Cqrs.Queries
 {
@@ -19,12 +19,27 @@ namespace SharedKernel.Infrastructure.Cqrs.Queries
         /// 
         /// </summary>
         /// <param name="services"></param>
-        /// <param name="infrastructureAssembly"></param>
+        /// <param name="serviceLifetime"></param>
+        /// <param name="assembly"></param>
         /// <returns></returns>
-        public static IServiceCollection AddQueriesHandlers(this IServiceCollection services, params Assembly[] infrastructureAssembly)
+        public static IServiceCollection AddQueriesHandlers(this IServiceCollection services,
+            Assembly assembly, ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
         {
-            foreach (var assembly in infrastructureAssembly)
-                services.AddFromAssembly(assembly, typeof(IQueryRequestHandler<,>));
+            services.AddFromAssembly(assembly, serviceLifetime, typeof(IQueryRequestHandler<,>));
+            return services;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="serviceLifetime"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddQueriesHandlers(this IServiceCollection services, Type type,
+            ServiceLifetime serviceLifetime = ServiceLifetime.Transient)
+        {
+            services.AddFromAssembly(type.Assembly, serviceLifetime, typeof(IQueryRequestHandler<,>));
 
             return services;
         }
@@ -33,12 +48,30 @@ namespace SharedKernel.Infrastructure.Cqrs.Queries
         /// 
         /// </summary>
         /// <param name="services"></param>
+        /// <param name="serviceLifetime"></param>
+        /// <param name="infrastructureAssembly"></param>
+        /// <returns></returns>
+        public static IServiceCollection AddQueriesHandlers(this IServiceCollection services,
+            ServiceLifetime serviceLifetime = ServiceLifetime.Transient, params Assembly[] infrastructureAssembly)
+        {
+            foreach (var assembly in infrastructureAssembly)
+                services.AddFromAssembly(assembly, serviceLifetime, typeof(IQueryRequestHandler<,>));
+
+            return services;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="serviceLifetime"></param>
         /// <param name="queryHandlerTypes"></param>
         /// <returns></returns>
-        public static IServiceCollection AddQueriesHandlers(this IServiceCollection services, params Type[] queryHandlerTypes)
+        public static IServiceCollection AddQueriesHandlers(this IServiceCollection services,
+            ServiceLifetime serviceLifetime = ServiceLifetime.Transient, params Type[] queryHandlerTypes)
         {
             foreach (var queryHandlerType in queryHandlerTypes)
-                services.AddFromAssembly(queryHandlerType.Assembly, typeof(IQueryRequestHandler<,>));
+                services.AddFromAssembly(queryHandlerType.Assembly, serviceLifetime, typeof(IQueryRequestHandler<,>));
 
             return services;
         }
@@ -63,7 +96,7 @@ namespace SharedKernel.Infrastructure.Cqrs.Queries
         private static IServiceCollection AddQueryBus(this IServiceCollection services)
         {
             return services
-                .AddTransient<ExecuteMiddlewaresService>()
+                .AddTransient<IExecuteMiddlewaresService, ExecuteMiddlewaresService>()
                 .AddTransient(typeof(IEntityValidator<>), typeof(FluentValidator<>));
         }
     }
